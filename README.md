@@ -1,4 +1,4 @@
-# 🚀 OriginX Backend
+# 🚀 Americanolabs Backend
 
 An Express-based API that fetches and updates staking data from the Ethereum blockchain using ethers.js and Prisma ORM. Built for Web3 developers! 🌐💰
 
@@ -13,8 +13,8 @@ An Express-based API that fetches and updates staking data from the Ethereum blo
 
 1. Clone this repository:
    ```sh
-   git clone https://github.com/yourusername/staking-data-api.git
-   cd staking-data-api
+   git clone https://github.com/americanolabs/backend.git
+   cd backend
    ```
 2. Install dependencies:
    ```sh
@@ -22,9 +22,9 @@ An Express-based API that fetches and updates staking data from the Ethereum blo
    ```
 3. Create a `.env` file and configure environment variables:
    ```env
-   PORT=3000
-   RPC_URL=<YOUR_RPC_URL>
-   DATABASE_URL=<YOUR_PRISMA_DATABASE_URL>
+   DATABASE_URL=
+   DECAF_TESTNET_RPC_URL=
+   ARBITRUM_SEPOLIA_RPC_URL=
    ```
 4. Run database migrations (if using Prisma):
    ```sh
@@ -48,12 +48,12 @@ GET /staking
 
 #### 🔍 Get staking data by protocol ID
 ```http
-GET /staking/:idProtocol
+GET /staking/protocol/:idProtocol
 ```
 
-#### 🔎 Get staking data by token address
+#### 🔎 Get staking data by staking address
 ```http
-GET /staking/:address
+GET /staking/address/:address
 ```
 
 #### 🔄 Update staking data
