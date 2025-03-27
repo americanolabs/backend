@@ -4,7 +4,6 @@ import { ethers, ZeroAddress } from "ethers";
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
 import cors from "cors";
-import { encodeOrderData, generateRandomBytes32 } from "./helper/encode-order";
 
 dotenv.config();
 
@@ -15,8 +14,47 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
-const arbitrumSepoliaRPC = process.env.ARBITRUM_SEPOLIA_RPC_URL;
-const decafTestnetRPC = process.env.DECAF_TESTNET_RPC_URL;
+const arbitrumSepoliaRPC = process.env.ARBITRUM_SEPOLIA_RPC_URL || "";
+const decafTestnetRPC = process.env.DECAF_TESTNET_RPC_URL || "";
+
+import { encodeAbiParameters, parseAbiParameters, type Hex, toHex } from "viem";
+
+export function encodeOrderData(order: {
+  sender: HexAddress;
+  recipient: HexAddress;
+  inputToken: bigint;
+  outputToken: bigint;
+  amountIn: bigint;
+  amountOut: bigint;
+  senderNonce: bigint;
+  originDomain: bigint;
+  destinationDomain: bigint;
+  destinationSettler: HexAddress;
+  fillDeadline: bigint;
+  data: any;
+}): Hex {
+  return encodeAbiParameters(
+    parseAbiParameters(
+      "(address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256, address, uint256, bytes)"
+    ),
+    [
+      [
+        order.sender,
+        order.recipient,
+        order.inputToken,
+        order.outputToken,
+        order.amountIn,
+        order.amountOut,
+        order.senderNonce,
+        order.originDomain,
+        order.destinationDomain,
+        order.destinationSettler,
+        order.fillDeadline,
+        order.data
+      ]
+    ]
+  );
+}
 
 const MOCK_TOKENS = [
   {
@@ -24,28 +62,28 @@ const MOCK_TOKENS = [
     staking: "0x5B4eFE4627d52D22a37da74Ee480CdC1F7bd15a6",
     nameProject: "RockX",
     chain: "Arbitrum Sepolia",
-    rpc: arbitrumSepoliaRPC
+    rpc: arbitrumSepoliaRPC,
   },
   {
     token: ZeroAddress,
     staking: "0x0c2470065cAD1CdE95062E1203B631C3a06B4f79",
     nameProject: "Camelot",
     chain: "Arbitrum Sepolia",
-    rpc: arbitrumSepoliaRPC
+    rpc: arbitrumSepoliaRPC,
   },
   {
     token: ZeroAddress,
     staking: "0x944c0F40efFd73Fb5Cb02851ce7CcA0e30a61D3D",
     nameProject: "Veda",
     chain: "Decaf Testnet",
-    rpc: decafTestnetRPC
+    rpc: decafTestnetRPC,
   },
   {
     token: ZeroAddress,
     staking: "0xBcBe5DE4D9F8F9336924eCB90888a775DfB06Eb9",
     nameProject: "Hord",
     chain: "Decaf Testnet",
-    rpc: decafTestnetRPC
+    rpc: decafTestnetRPC,
   },
 ];
 
@@ -60,13 +98,18 @@ async function updateStakingData(index: number) {
 
     const { token, staking, chain, nameProject, rpc } = MOCK_TOKENS[index];
 
+    if (!rpc) {
+      console.warn(`Missing RPC URL for ${nameProject} on ${chain}`);
+      return;
+    }
+
     const provider = new ethers.JsonRpcProvider(rpc);
     const contract = new ethers.Contract(staking, stakingABI, provider);
 
     const apy = await contract.fixedAPY();
     const totalStaked = await contract.totalAmountStaked();
 
-    const formattedTVL = Number(ethers.formatUnits(totalStaked, 18)); 
+    const formattedTVL = Number(ethers.formatUnits(totalStaked, 18));
     const formattedAPY = Number(apy);
 
     await prisma.staking.upsert({
@@ -97,16 +140,16 @@ async function updateStakingData(index: number) {
   }
 }
 
-const getStakingData = async (req: Request, res: Response) => {
+app.get("/staking", async (req: Request, res: Response) => {
   try {
     const data = await prisma.staking.findMany();
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch staking data" });
   }
-};
+});
 
-const getStakingByIdProtocol = async (req: Request, res: Response): Promise<void> => {
+app.get("/staking/protocol/:idProtocol", async (req: Request, res: Response) => {
   try {
     const { idProtocol } = req.params;
     const data = await prisma.staking.findMany({
@@ -121,27 +164,9 @@ const getStakingByIdProtocol = async (req: Request, res: Response): Promise<void
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch staking data" });
   }
-};
+});
 
-const getStakingByAddress = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { address } = req.params;
-    const data = await prisma.staking.findUnique({
-      where: { addressStaking: address },
-    });
-
-    if (!data) {
-      res.status(404).json({ error: "Staking data not found" });
-      return;
-    }
-
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch staking data" });
-  }
-};
-
-const updateStaking = async (req: Request, res: Response) => {
+app.post("/staking/update", async (req: Request, res: Response) => {
   try {
     const updatePromises = MOCK_TOKENS.map((_, index) => updateStakingData(index));
 
@@ -156,9 +181,9 @@ const updateStaking = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: "Failed to update staking data" });
   }
-};
+});
 
-const order = async (req: Request, res: Response) => {
+app.post("/order", async (req: Request, res: Response) => {
   try {
     const {
       sender,
@@ -173,7 +198,11 @@ const order = async (req: Request, res: Response) => {
     } = req.body;
 
     if (!sender || !recipient || !inputToken || !outputToken || !amountIn || !amountOut || !originDomain || !destinationDomain || !destinationSettler) {
-      res.status(400).json({ error: 'Missing required fields' });
+      res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!ethers.isAddress(sender) || !ethers.isAddress(recipient) || !ethers.isAddress(destinationSettler)) {
+      res.status(400).json({ error: "Invalid Ethereum address" });
     }
 
     const now = Date.now();
@@ -181,37 +210,32 @@ const order = async (req: Request, res: Response) => {
     const timestampSec = BigInt(Math.floor(now / 1000));
 
     const encoded = encodeOrderData({
-      sender: sender,
-      recipient: recipient,
-      inputToken: inputToken,
-      outputToken: outputToken,
+      sender,
+      recipient,
+      inputToken: BigInt(inputToken),
+      outputToken: BigInt(outputToken),
       amountIn: BigInt(amountIn),
       amountOut: BigInt(amountOut),
       senderNonce: timestampMs,
       originDomain: BigInt(originDomain),
       destinationDomain: BigInt(destinationDomain),
-      destinationSettler: destinationSettler,
+      destinationSettler,
       fillDeadline: timestampSec,
       data: [],
     });
 
-    const order = {
-      fillDeadline: timestampSec,
-      orderDataType: generateRandomBytes32(),
-      orderData: encoded
-    }
-
-    res.json({ order });
+    res.json({
+      order: {
+        fillDeadline: timestampSec.toString(),
+        orderDataType: "0x08d75650babf4de09c9273d48ef647876057ed91d4323f8a2e3ebc2cd8a63b5e",
+        orderData: encoded
+      }
+    });
   } catch (error) {
-    res.status(400).json({ error: 'Invalid request' });
+    console.error("Error processing order:", error);
+    res.status(400).json({ error: "Invalid request" });
   }
-};
-
-app.get("/staking", getStakingData);
-app.get("/staking/protocol/:idProtocol", getStakingByIdProtocol);
-app.get("/staking/address/:address", getStakingByAddress);
-app.post("/staking/update", updateStaking);
-app.post("/order", order);
+});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
