@@ -35,7 +35,7 @@ export function encodeOrderData(order: {
 }): Hex {
   return encodeAbiParameters(
     parseAbiParameters(
-      "(address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256, address, uint256, bytes)"
+      "(address, address, uint256, uint256, uint256, uint256, uint256, uint256, uint256, address, uint256, (address, uint256)[])"
     ),
     [
       [
