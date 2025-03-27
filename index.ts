@@ -4,6 +4,7 @@ import { ethers, ZeroAddress } from "ethers";
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
 import cors from "cors";
+import { encodeOrderData, generateRandomBytes32 } from "./helper/encode-order";
 
 dotenv.config();
 
@@ -157,10 +158,60 @@ const updateStaking = async (req: Request, res: Response) => {
   }
 };
 
+const order = async (req: Request, res: Response) => {
+  try {
+    const {
+      sender,
+      recipient,
+      inputToken,
+      outputToken,
+      amountIn,
+      amountOut,
+      originDomain,
+      destinationDomain,
+      destinationSettler,
+    } = req.body;
+
+    if (!sender || !recipient || !inputToken || !outputToken || !amountIn || !amountOut || !originDomain || !destinationDomain || !destinationSettler) {
+      res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const now = Date.now();
+    const timestampMs = BigInt(now);
+    const timestampSec = BigInt(Math.floor(now / 1000));
+
+    const encoded = encodeOrderData({
+      sender: sender,
+      recipient: recipient,
+      inputToken: inputToken,
+      outputToken: outputToken,
+      amountIn: BigInt(amountIn),
+      amountOut: BigInt(amountOut),
+      senderNonce: timestampMs,
+      originDomain: BigInt(originDomain),
+      destinationDomain: BigInt(destinationDomain),
+      destinationSettler: destinationSettler,
+      fillDeadline: timestampSec,
+      data: [],
+    });
+
+    const order = {
+      fillDeadline: timestampSec,
+      orderDataType: generateRandomBytes32(),
+      orderData: encoded
+    }
+
+    res.json({ order });
+  } catch (error) {
+    res.status(400).json({ error: 'Invalid request' });
+  }
+};
+
 app.get("/staking", getStakingData);
 app.get("/staking/protocol/:idProtocol", getStakingByIdProtocol);
 app.get("/staking/address/:address", getStakingByAddress);
 app.post("/staking/update", updateStaking);
+app.post("/order", order);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
