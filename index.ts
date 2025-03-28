@@ -207,6 +207,7 @@ app.post("/order", async (req: Request, res: Response) => {
 
     const now = Date.now();
     const timestampMs = BigInt(now);
+    const timestampMsDeadline = BigInt(now + 3600000);
     const timestampSec = BigInt(Math.floor(now / 1000));
 
     const encoded = encodeOrderData({
@@ -216,7 +217,7 @@ app.post("/order", async (req: Request, res: Response) => {
       outputToken: BigInt(outputToken),
       amountIn: BigInt(amountIn),
       amountOut: BigInt(amountOut),
-      senderNonce: timestampMs,
+      senderNonce: timestampMsDeadline,
       originDomain: BigInt(originDomain),
       destinationDomain: BigInt(destinationDomain),
       destinationSettler,
