@@ -25,6 +25,7 @@ An Express-based API that fetches and updates staking data from the Ethereum blo
    DATABASE_URL=
    DECAF_TESTNET_RPC_URL=
    ARBITRUM_SEPOLIA_RPC_URL=
+   BASE_SEPOLIA_RPC_URL=
    ```
 4. Run database migrations (if using Prisma):
    ```sh

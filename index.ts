@@ -16,6 +16,7 @@ app.use(express.json());
 
 const arbitrumSepoliaRPC = process.env.ARBITRUM_SEPOLIA_RPC_URL || "";
 const decafTestnetRPC = process.env.DECAF_TESTNET_RPC_URL || "";
+const baseSepoliaRPC = process.env.BASE_SEPOLIA_RPC_URL || "";
 
 import { encodeAbiParameters, parseAbiParameters, type Hex, toHex } from "viem";
 
@@ -84,6 +85,27 @@ const MOCK_TOKENS = [
     nameProject: "Hord",
     chain: "Decaf Testnet",
     rpc: decafTestnetRPC,
+  },
+  {
+    token: ZeroAddress,
+    staking: "0x86dD79C7D39b6140c4831821d0f4F8C69e0A1B73",
+    nameProject: "Morpho",
+    chain: "Base Sepolia",
+    rpc: baseSepoliaRPC,
+  },
+  {
+    token: ZeroAddress,
+    staking: "0xce953102336f666a0cbAe4B2F7BF72a8dcDC72F5",
+    nameProject: "Aave",
+    chain: "Base Sepolia",
+    rpc: baseSepoliaRPC,
+  },
+  {
+    token: ZeroAddress,
+    staking: "0x71109FCe837d72D2c9212A60cC4Bd01437bEA3D6",
+    nameProject: "Pendle",
+    chain: "Base Sepolia",
+    rpc: baseSepoliaRPC,
   },
 ];
 
